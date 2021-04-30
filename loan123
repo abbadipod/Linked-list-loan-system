@@ -1,0 +1,402 @@
+/*
+The program simulates a simple loan system that accepts the borrower's information: ID, last name, first name, address and balance;
+					payment transaction: transaction id, borrower id, date of payment, and amount paid; and loan transaction: transaction id, borrower id,
+					date of loan, and amount borrowed. This program can also release the loan, receive payment, view borrower account, view loan transaction,
+					and view borrower payment  transaction.
+*/
+
+#include <stdio.h>
+#include <math.h>
+#include <conio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <windows.h>
+#include <stdbool.h>
+
+
+#define C 51
+#define M 7
+
+#define FLUSH while(getchar() != '\n');
+
+typedef char string50[C];
+typedef struct borrow * br;
+typedef struct loan * lr;
+typedef struct pay * pr;
+
+typedef struct borrow{
+	string50 bID;
+	string50 bLN;
+	string50 bFN;
+	string50 bAd;
+	float bBal;
+	br next;
+} BORROWERNODE;
+
+typedef struct loan{
+	string50 uID;
+	string50 lID;
+	string50 lDL;
+	float lAL;
+	lr next;
+}LOANNODE;
+
+typedef struct pay{
+	string50 unID;
+	string50 pID;
+	string50 pDP;
+	float pAP;
+	pr next;
+
+}PAYMENTNODE;
+
+void retryPrompt();
+int retryOrBackPrompt();
+void continuePrompt();
+
+BORROWERNODE addBorrower(br);
+br searchKey(br, char key[]);
+void insertNodeB(br *, BORROWERNODE);
+
+LOANNODE releaseLoan(br, lr);
+void insertNodeL(lr *, LOANNODE);
+
+PAYMENTNODE receivePayment(br, pr);
+void insertNodeP(pr *, PAYMENTNODE);
+
+void viewBorrower(br);
+void loanTransaction(br, lr);
+void paymentTransaction(br, pr);
+
+int main(){
+	string50 menuBorrower[] = {	"Add Borrower", "Release Loan", "Receive Payment", "View Borrower Account", "View Borrower Loan Transaction",
+								"View Borrower Payment Transaction", "Exit"};
+	char key[10];
+	int  choice = 0, i = 0, exit = 1;
+
+	BORROWERNODE brw;
+	LOANNODE ln;
+	PAYMENTNODE py;
+
+	br brhead = NULL, searchNode;
+	lr lrhead = NULL;
+	pr prhead = NULL;
+
+	printf("-Papas Bank-\n");
+	
+	while(exit){
+		system("cls");
+		for (i = 0; i < M; i++) {
+			printf("%i] %s\n", i+1, menuBorrower[i]);
+		}
+
+		printf("\nYour choice: ");
+		scanf("%i", &choice);
+		FLUSH;
+
+		switch(choice)
+		{
+			case 1:	system("cls");
+					brw = addBorrower(brhead);
+					insertNodeB(&brhead, brw);
+					break;
+			case 2:	system("cls");
+					ln = releaseLoan(brhead, lrhead);
+					insertNodeL(&lrhead, ln);
+					break;
+			case 3:	system("cls");
+					py = receivePayment(brhead, prhead);
+					insertNodeP(&prhead, py);
+					break;
+			case 4:	system("cls");
+					printf("Enter Borrower ID: ");
+					gets(key);
+					searchNode = searchKey(brhead, key);
+					viewBorrower(searchNode);
+					break;
+			case 5:	system("cls");
+					printf("Enter Borrower ID: ");
+					gets(key);
+					searchNode = searchKey(brhead, key);
+					loanTransaction(searchNode, lrhead);
+					break;
+			case 6:	system("cls");
+					printf("Enter Borrower ID: ");
+					gets(key);
+					searchNode = searchKey(brhead, key);
+					paymentTransaction(searchNode, prhead);
+					break;
+			case 7:	exit = 0;
+					break;
+			default:	printf("\n\nInvalid Input");
+						retryPrompt();
+		}
+	}
+
+	return 0;
+}
+
+void retryPrompt(){
+	printf("\n\nPress > to retry\n");
+	while(getch() != '>');
+}
+
+int retryOrBackPrompt(){
+	char temp;
+
+	printf("\n\nPress any key to retry or 'B' to go back to main menu.\n");
+	scanf("%c", &temp);
+	FLUSH;
+
+	if (temp == 'B'){
+		return 1;
+	}else{
+		return 0;
+	}
+}
+
+void continuePrompt(){
+	printf("\n\nPress > to continue\n");
+	while(getch() != '>');
+}
+
+BORROWERNODE addBorrower(br brhead){
+	bool unique = true;
+	BORROWERNODE brw;
+
+	printf("----- ADD NEW BORROWER -----\n\n");
+
+	printf("Enter the following information:\n");
+	printf("Borrower ID: ");
+
+	do{
+		gets(brw.bID);
+		if(searchKey(brhead, brw.bID) == NULL){
+			unique = false;
+		}else{
+			printf("%s already exists, try again: ", brw.bID);
+		}
+	}while(unique);
+
+	printf("Last Name: ");
+	gets(brw.bLN);
+	printf("First Name: ");
+	gets(brw.bFN);
+	printf("Address: ");
+	gets(brw.bAd);
+	brw.bBal = 0.00;
+	printf("Initial Balance: %i", brw.bBal);
+
+	printf ("\n\nBORROWER ADDED SUCCESSFULLY!");
+	continuePrompt();
+	
+	return brw;
+	
+}
+
+br searchKey(br pt, char key[]){
+	while(pt != NULL){
+		if(strcmp(pt->bID, key) == 0){
+			return pt;
+		}
+
+		pt = pt->next;
+	}
+
+	return pt;
+}
+
+void insertNodeB(br * brhead, BORROWERNODE brw){
+	br tp = *brhead, temp = malloc(sizeof(BORROWERNODE));
+
+	*temp = brw;
+	temp->next = NULL;
+
+	if(*brhead == NULL){
+		*brhead = temp;
+	}else{
+		while(tp->next != NULL){
+			tp = tp->next;
+		}
+
+		tp->next = temp;
+	}
+}
+
+LOANNODE releaseLoan(br brhead, lr lrhead){
+	br pt;
+	bool unique = true;
+	LOANNODE ln;
+
+	printf("----- RELEASE LOAN -----\n\n");
+
+	printf("Enter the following information:\n");
+	printf("Borrower ID: ");
+
+	do{
+		gets(ln.uID);
+		br searchBrw = searchKey(brhead, ln.uID);
+
+		if(searchBrw != NULL){
+			unique = false;
+		}else{
+			printf("%s does not exists, try again: ", ln.uID);
+		}
+	}while(unique);
+
+	printf("Loan Transaction ID: ");
+	gets(ln.lID);
+	printf("Date of Loan: ");
+	gets(ln.lDL);
+	printf("Amount to Loan: ");
+	scanf("%f", &ln.lAL);
+	FLUSH;
+
+	pt->bBal += ln.lAL * 1.25;
+
+	printf("\n\nLOAN TRANSACTION ADDED SUCCESSFULLY!\n");
+	printf("New Balance: %.2f", ln.lAL);
+	continuePrompt();
+
+	return ln;
+}
+
+void insertNodeL(lr * lrhead, LOANNODE ln){
+	lr tp = *lrhead, temp = malloc(sizeof(LOANNODE));
+
+	*temp = ln;
+	temp->next = NULL;
+
+	if(*lrhead == NULL){
+		*lrhead = temp;
+	}else{
+		while(tp->next != NULL){
+			tp = tp->next;
+		}
+
+		tp->next = temp;
+	}
+}
+
+PAYMENTNODE receivePayment(br brhead, pr prhead){
+	br pt;
+	bool unique = true;
+	PAYMENTNODE py;
+
+	printf("----- RELEASE LOAN -----\n\n");
+
+	printf("Enter the following information:\n");
+	printf("Borrower ID: ");
+
+	do{
+		gets(py.unID);
+		br searchBrw = searchKey(brhead, py.unID);
+
+		if(searchBrw != NULL){
+			unique = false;
+		}else{
+			printf("%s does not exists, try again: ", py.unID);
+		}
+	}while(unique);
+
+	printf("Payment Transaction ID: ");
+	gets(py.pID);
+	printf("Date of payment: ");
+	gets(py.pDP);
+	printf("Amount to Pay: ");
+	scanf("%f", &py.pAP);
+	FLUSH;
+
+	pt->bBal -= py.pAP;
+
+	printf("\n\nPAYMENT TRANSACTION ADDED SUCCESSFULLY!\n");
+	printf("New Balance: %.2f", py.pAP);
+	continuePrompt();
+
+	return py;
+}
+
+void insertNodeP(pr * prhead, PAYMENTNODE py){
+	pr tp = *prhead, temp = malloc(sizeof(PAYMENTNODE));
+
+	*temp = py;
+	temp->next = NULL;
+
+	if(*prhead == NULL){
+		*prhead = temp;
+	}else{
+		while(tp->next != NULL){
+			tp = tp->next;
+		}
+
+		tp->next = temp;
+	}
+}
+
+void viewBorrower(br pt){
+	if(pt == NULL){
+		printf("Borrower does not exist, try again.\n");
+		retryOrBackPrompt();
+	}else{
+		printf("\n----- BORROWER INFORMATION -----\n");
+		printf("\n _______________________________________________________________________________________________________________________________\n");
+		printf("|      ID      |           LAST NAME           |           FIRST NAME           |           ADDRESS           |     BALANCE     |\n");
+		printf("|--------------|-------------------------------|--------------------------------|-----------------------------|-----------------|\n");
+		printf("|  %11s |", pt->bID);
+		printf(" %29s |", pt->bLN);
+		printf(" %30s |", pt->bFN);
+		printf(" %27s |", pt->bAd);
+		printf(" %15.2f |\n", pt->bBal);
+		printf("|______________|_______________________________|________________________________|_____________________________|_________________|\n");
+		continuePrompt();
+	}
+}
+
+void loanTransaction(br pt, lr lrhead){
+	if(lrhead == NULL){
+		printf("Borrower does not exist, try again.\n");
+		retryOrBackPrompt();
+	}else{
+		printf("\n----- LOAN TRANSACTIONS OF %s %s -----\n", pt->bFN, pt->bLN);
+		printf("\n _____________________________________________________________\n");
+		printf("|      TRANSACTION ID      |      DATE      |     BALANCE     |\n");
+		printf("|--------------------------|----------------|-----------------|\n");
+
+		while(lrhead != NULL){
+			if(strcmp(lrhead->uID, pt->bID) == 0){
+				printf("|  %16s |", lrhead->lID);
+				printf(" %-30s |", lrhead->lDL);
+				printf(" %16.2f |", lrhead->lAL);
+			}
+			lrhead->next;
+
+			printf("|__________________________|________________|________________|\n");
+		}
+		continuePrompt();
+	}
+}
+
+void paymentTransaction(br pt, pr prhead){
+	if(prhead == NULL){
+		printf("Borrower does not exist, try again.\n");
+		retryOrBackPrompt();
+	}else{
+		printf("\n----- PAYMENT TRANSACTIONS OF %s %s -----\n", pt->bFN, pt->bLN);
+		printf("\n _____________________________________________________________\n");
+		printf("|      TRANSACTION ID      |      DATE      |     BALANCE     |\n");
+		printf("|--------------------------|----------------|-----------------|\n");
+
+		while(prhead != NULL){
+			if(strcmp(prhead->unID, pt->bID) == 0){
+				printf("|  %16s |", prhead->pID);
+				printf(" %-30s |", prhead->pDP);
+				printf(" %16.2f |", prhead->pAP);
+			}
+			prhead->next;
+
+			printf("|__________________________|________________|________________|\n");
+		}
+
+		continuePrompt();
+	}
+}
